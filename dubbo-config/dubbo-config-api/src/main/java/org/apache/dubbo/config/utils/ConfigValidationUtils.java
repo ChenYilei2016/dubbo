@@ -189,7 +189,9 @@ public class ConfigValidationUtils {
                     List<URL> urls = UrlUtils.parseURLs(address, map);
 
                     for (URL url : urls) {
-
+                        /**
+                         * 把原来的协议 变成了 registry
+                         */
                         url = URLBuilder.from(url)
                                 .addParameter(REGISTRY_KEY, url.getProtocol())
                                 .setProtocol(extractRegistryType(url))

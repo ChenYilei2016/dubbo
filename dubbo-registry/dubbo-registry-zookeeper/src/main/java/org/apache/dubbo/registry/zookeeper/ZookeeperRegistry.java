@@ -25,6 +25,8 @@ import org.apache.dubbo.common.utils.CollectionUtils;
 import org.apache.dubbo.common.utils.ConcurrentHashSet;
 import org.apache.dubbo.common.utils.UrlUtils;
 import org.apache.dubbo.registry.NotifyListener;
+import org.apache.dubbo.registry.integration.RegistryDirectory;
+import org.apache.dubbo.registry.support.AbstractRegistry;
 import org.apache.dubbo.registry.support.FailbackRegistry;
 import org.apache.dubbo.remoting.Constants;
 import org.apache.dubbo.remoting.zookeeper.ChildListener;
@@ -178,6 +180,15 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
+                /**
+                 * 上面是给zk增加监听器, 配置修改了进行notify
+                 * 这里是第一次拉取的时候全部notify触发一下
+                 *
+                 * 缓存作用
+                 * {@link AbstractRegistry#notify(org.apache.dubbo.common.URL, org.apache.dubbo.registry.NotifyListener, java.util.List)}
+                 * 触发的监听器就是 {@link org.apache.dubbo.rpc.cluster.Directory} 他本身传了自己进来
+                 * {@link RegistryDirectory#notify(List)} )}
+                 */
                 notify(url, listener, urls);
             }
         } catch (Throwable e) {

@@ -182,6 +182,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         setConsumerUrl(url);
         CONSUMER_CONFIGURATION_LISTENER.addNotifyListener(this);
         serviceConfigurationListener = new ReferenceConfigurationListener(this, url);
+        //监听器是自己
         registry.subscribe(url, this);
     }
 
@@ -231,6 +232,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                 .filter(Objects::nonNull)
                 .filter(this::isValidCategory)
                 .filter(this::isNotCompatibleFor26x)
+                //分类不同事件的url
                 .collect(Collectors.groupingBy(this::judgeCategory));
 
         List<URL> configuratorURLs = categoryUrls.getOrDefault(CONFIGURATORS_CATEGORY, Collections.emptyList());
@@ -251,6 +253,10 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                 providerURLs = addressListener.notify(providerURLs, getConsumerUrl(),this);
             }
         }
+
+        /**
+         * 刷新 或者 覆盖 invoker
+         */
         refreshOverrideAndInvoker(providerURLs);
     }
 
@@ -309,6 +315,10 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             if (invokerUrls.isEmpty()) {
                 return;
             }
+
+            /**
+             * 把 注册中心的url , 变成一个个invoker
+             */
             Map<String, Invoker<T>> newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map
 
             /**
@@ -452,6 +462,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                         enabled = url.getParameter(ENABLED_KEY, true);
                     }
                     if (enabled) {
+                        /**
+                         * 生成一个invoker , 是 dubbo:xxx
+                         */
                         invoker = new InvokerDelegate<>(protocol.refer(serviceType, url), url, providerUrl);
                     }
                 } catch (Throwable t) {

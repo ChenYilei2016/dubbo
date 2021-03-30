@@ -192,8 +192,16 @@ public class RegistryProtocol implements Protocol {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        /**
+         *  =>  zookeeper://xxxxx
+         *  构建一个注册的服务 => 基于zookeeper的注册方式
+         */
         URL registryUrl = getRegistryUrl(originInvoker);
         // url to export locally
+        /**
+         * dubbo://xxxxxx
+         * 提供的服务
+         */
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
@@ -206,6 +214,9 @@ public class RegistryProtocol implements Protocol {
 
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         //export invoker
+        /**
+         * 本地暴露 netty
+         */
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
         // url to registry
@@ -215,6 +226,10 @@ public class RegistryProtocol implements Protocol {
         // decide if we need to delay publish
         boolean register = providerUrl.getParameter(REGISTER_KEY, true);
         if (register) {
+            /**
+             * 远程注册
+             * zookeeper://xxx
+             */
             register(registryUrl, registeredProviderUrl);
         }
 
@@ -253,6 +268,13 @@ public class RegistryProtocol implements Protocol {
     private <T> ExporterChangeableWrapper<T> doLocalExport(final Invoker<T> originInvoker, URL providerUrl) {
         String key = getCacheKey(originInvoker);
 
+        /**
+         * protocol 依赖注入进来的 自适应扩展点
+         *
+         *
+         * {@link org.apache.dubbo.rpc.protocol.ProtocolListenerWrapper}
+         * {@link org.apache.dubbo.rpc.protocol.ProtocolFilterWrapper} 有用 ,一堆拦截filter
+         */
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(key, s -> {
             Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegate), originInvoker);
@@ -452,6 +474,11 @@ public class RegistryProtocol implements Protocol {
                 return doRefer(getMergeableCluster(), registry, type, url);
             }
         }
+        /**
+         * MockCluster( failOverCluster(invoker) )
+         * {@link org.apache.dubbo.rpc.cluster.support.wrapper.MockClusterWrapper}
+         * {@link org.apache.dubbo.rpc.cluster.support.FailoverCluster}
+         */
         return doRefer(cluster, registry, type, url);
     }
 
@@ -460,8 +487,13 @@ public class RegistryProtocol implements Protocol {
     }
 
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
+        /**
+         * 从注册中心获取所有的信息 => directory
+         */
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
+        // zookeeper: 获取地址
         directory.setRegistry(registry);
+        // dubbo 进行通信
         directory.setProtocol(protocol);
         // all attributes of REFER_KEY
         Map<String, String> parameters = new HashMap<String, String>(directory.getConsumerUrl().getParameters());
@@ -471,6 +503,9 @@ public class RegistryProtocol implements Protocol {
             registry.register(directory.getRegisteredConsumerUrl());
         }
         directory.buildRouterChain(subscribeUrl);
+        /**
+         * 监听, 监听provider 有无变动
+         */
         directory.subscribe(toSubscribeUrl(subscribeUrl));
 
         Invoker<T> invoker = cluster.join(directory);
